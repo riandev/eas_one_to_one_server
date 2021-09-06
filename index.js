@@ -15,9 +15,9 @@ const port = 5010;
 
 const MongoClient = require("mongodb").MongoClient;
 // const MongoClient = require("mongodb").MongoClient;
-// const uri = "mongodb://127.0.0.1:27017/one_to_one";
-const uri =
-  "mongodb+srv://aktcl:01939773554op5t@cluster0.9akoo.mongodb.net/one_to_one?retryWrites=true&w=majority";
+const uri = "mongodb://127.0.0.1:27017/one_to_one";
+// const uri =
+//   "mongodb+srv://aktcl:01939773554op5t@cluster0.9akoo.mongodb.net/one_to_one?retryWrites=true&w=majority";
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -26,11 +26,21 @@ client.connect((err) => {
   const userCollection = client.db("one_to_one").collection("users");
   const adminCollection = client.db("one_to_one").collection("admins");
   const leadsCollection = client.db("one_to_one").collection("leads");
-  const finalLeadsCollection = client.db("one_to_one").collection("leadsFinal");
+  const baWiseReportCollection = client
+    .db("one_to_one")
+    .collection("baWiseReport");
+  const territoryWiseReportCollection = client
+    .db("one_to_one")
+    .collection("territoryWiseReport");
+  const areaWiseReportCollection = client
+    .db("one_to_one")
+    .collection("areaWiseReport");
+  const regionWiseReportCollection = client
+    .db("one_to_one")
+    .collection("regionWiseReport");
   const detailsReportCollection = client
     .db("one_to_one")
     .collection("detailsReport");
-  // const reportsCollection = client.db("aktcl_cep").collection("reports");
   console.log("user Connection");
   app.get("/agent", (req, res) => {
     const email = req.query.email;
@@ -218,7 +228,7 @@ client.connect((err) => {
   });
   app.get("/initialLead", (req, res) => {
     let initDate = req.query.initDate;
-    // console.log(initDate);
+    console.log(initDate);
     leadsCollection
       .aggregate([
         {
@@ -236,7 +246,7 @@ client.connect((err) => {
         let users = _.groupBy(
           JSON.parse(JSON.stringify(results)),
           function (d) {
-            return d.TM_USER_NAME;
+            return d.ba_id;
           }
         );
         for (user in users) {
@@ -244,30 +254,38 @@ client.connect((err) => {
             // userId: user,
             // consumers: users[user],
             // countByUser: users[user].length,
-            packetSales: users[user]
-              .filter((x) => x.stick_packet === 1)
+            stick_sales: users[user]
+              .filter((x) => x.sales_status === "1_stick_trial")
               .slice(0, 5)
               .map((d) => {
                 let datas = {};
                 (datas.id = d._id),
-                  (datas.diid = d.DIID),
+                  (datas.ID = d.ID),
                   (datas.data_date = d.data_date),
                   (datas.r_name = d.r_name),
                   (datas.Consumer_No = d.Consumer_No);
                 return datas;
               }),
-            freeSampling: users[user]
-              .filter((x) => x.stick_packet === 2)
+            packet_sales: users[user]
+              .filter(
+                (x) =>
+                  x.sales_status === "Lighter_VAO" ||
+                  x.sales_status === "Plastic_sachet"
+              )
               .slice(
                 0,
-                users[user].filter((x) => x.stick_packet === 1).length < 5
-                  ? 6 - users[user].filter((x) => x.stick_packet === 1).length
+                users[user].filter((x) => x.sales_status === "1_stick_trial")
+                  .length < 5
+                  ? 6 -
+                      users[user].filter(
+                        (x) => x.sales_status === "1_stick_trial"
+                      ).length
                   : 1
               )
               .map((d) => {
                 let datas = {};
                 (datas.id = d._id),
-                  (datas.diid = d.DIID),
+                  (datas.ID = d.ID),
                   (datas.data_date = d.data_date),
                   (datas.r_name = d.r_name),
                   (datas.Consumer_No = d.Consumer_No);
@@ -332,7 +350,7 @@ client.connect((err) => {
         let users = _.groupBy(
           JSON.parse(JSON.stringify(results)),
           function (d) {
-            return d.TM_USER_NAME;
+            return d.ba_id;
           }
         );
         for (user in users) {
@@ -343,27 +361,45 @@ client.connect((err) => {
             // callDone: users[user].filter(
             //   (x) => x.answer1 === "yes" || x.answer1 === "no"
             // ).length,
-            newLead: users[user]
+            new_stick_sales: users[user]
               .filter(
                 (x) =>
-                  x.stick_packet === 2 &&
-                  (x.answer1 === null || x.answer1 === undefined)
+                  x.sales_status === "1_stick_trial" &&
+                  (x.answer7dot1 === null || x.answer7dot1 === undefined)
               )
               .slice(
                 0,
-                users[user].filter(
-                  (x) => x.answer1 === "yes" || x.answer1 === "no"
-                ).length < 6
-                  ? 6 -
-                      users[user].filter(
-                        (x) => x.answer1 === "yes" || x.answer1 === "no"
-                      ).length
+                users[user].filter((x) => x.answer7dot1 === "yes").length < 5
+                  ? 5 -
+                      users[user].filter((x) => x.answer7dot1 === "yes").length
                   : 0
               )
               .map((d) => {
                 let datas = {};
                 (datas.id = d._id),
-                  (datas.diid = d.DIID),
+                  (datas.ID = d.ID),
+                  (datas.data_date = d.data_date),
+                  (datas.r_name = d.r_name),
+                  (datas.Consumer_No = d.Consumer_No);
+                return datas;
+              }),
+            new_packet_sales: users[user]
+              .filter(
+                (x) =>
+                  (x.sales_status === "Lighter_VAO" ||
+                    x.sales_status === "Plastic_sachet") &&
+                  (x.answer7dot1 === null || x.answer7dot1 === undefined)
+              )
+              .slice(
+                0,
+                users[user].filter((x) => x.answer7dot1 === "yes").length < 1
+                  ? 1
+                  : 0
+              )
+              .map((d) => {
+                let datas = {};
+                (datas.id = d._id),
+                  (datas.ID = d.ID),
                   (datas.data_date = d.data_date),
                   (datas.r_name = d.r_name),
                   (datas.Consumer_No = d.Consumer_No);
@@ -411,6 +447,1150 @@ client.connect((err) => {
     } catch (error) {
       console.log(error);
     }
+  });
+  app.get("/baReport/:date", async (req, res) => {
+    const date = req.params.date;
+    console.log(date);
+    async function analyzeData() {
+      let result = [];
+      let total_data_sum = 0;
+      let valid_data_sum = 0;
+      let valid_data_sum_percentage = 0;
+      let dublicate_data_sum = 0;
+      let dublicate_data_sum_percentage = 0;
+      let error_data_sum = 0;
+      let error_data_sum_percentage = 0;
+      let total_dial_call_sum = 0;
+      let connected_call_sum = 0;
+      let connected_call_percentage = 0;
+      let not_permitted_to_call_sum = 0;
+      let permitted_to_call_sum = 0;
+      let call_permission_sum_percentage = 0;
+      let bellow_18_sum = 0;
+      let non_smoker_sum = 0;
+      let ba_did_not_pay_visit_sum = 0;
+      let total_fake_call_sum = 0;
+      let fake_call_sum_percentage = 0;
+      let ba_did_visit_sum = 0;
+      let right_franchise_sum = 0;
+      let stick_purchase_sum = 0;
+      try {
+        let data = await leadsCollection.find({ data_date: date }).toArray();
+        let users = _.groupBy(JSON.parse(JSON.stringify(data)), function (d) {
+          return d.ba_id;
+        });
+        for (user in users) {
+          result.push({
+            userId: user,
+            date: new Date(users[user][0].data_date),
+            baName: users[user][0].BA_Name,
+            region: users[user][0].Region,
+            area: users[user][0].Area,
+            territory: users[user][0].Territory,
+            Sales_Point: users[user][0].Sales_Point,
+            agencyName: users[user][0].agencyName,
+            allocated_target: users[user][0].allocated_target,
+            valid_Data_count: users[user].filter(
+              (x) => x.Data_Status === "Valid_Data"
+            ).length,
+            dublicate_Data_count: users[user].filter(
+              (x) => x.Data_Status === "Duplicate_Data"
+            ).length,
+            error_Data_count: users[user].filter(
+              (x) => x.Data_Status === "Error_Data"
+            ).length,
+            total_data_count:
+              users[user].filter((x) => x.Data_Status === "Valid_Data").length +
+              users[user].filter((x) => x.Data_Status === "Duplicate_Data")
+                .length +
+              users[user].filter((x) => x.Data_Status === "Error_Data").length,
+            valid_data_percentage:
+              (users[user].filter((x) => x.Data_Status === "Valid_Data")
+                .length /
+                (users[user].filter((x) => x.Data_Status === "Valid_Data")
+                  .length +
+                  users[user].filter((x) => x.Data_Status === "Duplicate_Data")
+                    .length +
+                  users[user].filter((x) => x.Data_Status === "Error_Data")
+                    .length)) *
+              100,
+            dublicate_data_percentage:
+              (users[user].filter((x) => x.Data_Status === "Duplicate_Data")
+                .length /
+                (users[user].filter((x) => x.Data_Status === "Valid_Data")
+                  .length +
+                  users[user].filter((x) => x.Data_Status === "Duplicate_Data")
+                    .length +
+                  users[user].filter((x) => x.Data_Status === "Error_Data")
+                    .length)) *
+              100,
+            error_data_percentage:
+              (users[user].filter((x) => x.Data_Status === "Error_Data")
+                .length /
+                (users[user].filter((x) => x.Data_Status === "Valid_Data")
+                  .length +
+                  users[user].filter((x) => x.Data_Status === "Duplicate_Data")
+                    .length +
+                  users[user].filter((x) => x.Data_Status === "Error_Data")
+                    .length)) *
+              100,
+            total_dial_call: users[user].filter((x) => x.for_d === "d").length,
+            total_connected_call: users[user].filter(
+              (x) => x.answer1 === "yes" || x.answer1 === "no"
+            ).length,
+            total_connected_call_percentage:
+              (users[user].filter(
+                (x) => x.answer1 === "yes" || x.answer1 === "no"
+              ).length /
+                users[user].filter((x) => x.for_d === "d").length) *
+              100,
+            not_permitted_to_call: users[user].filter((x) => x.answer2 === "no")
+              .length,
+            permitted_to_call: users[user].filter((x) => x.answer2 === "yes")
+              .length,
+            call_permission_percentage:
+              (users[user].filter((x) => x.answer2 === "yes").length /
+                users[user].filter(
+                  (x) => x.answer1 === "yes" || x.answer1 === "no"
+                ).length) *
+              100,
+            bellow_18: users[user].filter((x) => x.answer3 === "-18").length,
+            non_smoker: users[user].filter((x) => x.answer4 === "no").length,
+            ba_did_not_pay_visit: users[user].filter((x) => x.answer7 === "no")
+              .length,
+            total_fake_call:
+              users[user].filter((x) => x.answer3 === "-18").length +
+              users[user].filter((x) => x.answer4 === "no").length +
+              users[user].filter((x) => x.answer7 === "no").length,
+            fake_call_percentage:
+              ((users[user].filter((x) => x.answer3 === "-18").length +
+                users[user].filter((x) => x.answer4 === "no").length +
+                users[user].filter((x) => x.answer7 === "no").length) /
+                users[user].filter(
+                  (x) => x.answer1 === "yes" || x.answer1 === "no"
+                ).length) *
+              100,
+            ba_did_visit: users[user].filter((x) => x.answer7 === "yes").length,
+            right_franchise: users[user].filter(
+              (x) =>
+                x.answer5 === "real" ||
+                x.answer5 === "hollywood" ||
+                x.answer5 === "derby" ||
+                x.answer5 === "royals"
+            ).length,
+            stick_purchase: users[user].filter((x) => x.answer8dot2 === "yes")
+              .length,
+          });
+          total_data_sum +=
+            users[user].filter((x) => x.Data_Status === "Valid_Data").length +
+            users[user].filter((x) => x.Data_Status === "Duplicate_Data")
+              .length +
+            users[user].filter((x) => x.Data_Status === "Error_Data").length;
+          valid_data_sum += users[user].filter(
+            (x) => x.Data_Status === "Valid_Data"
+          ).length;
+          valid_data_sum_percentage = parseFloat(
+            (valid_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          dublicate_data_sum += users[user].filter(
+            (x) => x.Data_Status === "Duplicate_Data"
+          ).length;
+          dublicate_data_sum_percentage = parseFloat(
+            (dublicate_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          error_data_sum += users[user].filter(
+            (x) => x.Data_Status === "Error_Data"
+          ).length;
+          error_data_sum_percentage = parseFloat(
+            (error_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          total_dial_call_sum += users[user].filter(
+            (x) => x.for_d === "d"
+          ).length;
+          connected_call_sum += users[user].filter(
+            (x) => x.answer1 === "yes" || x.answer1 === "no"
+          ).length;
+          connected_call_percentage = parseFloat(
+            (connected_call_sum / total_dial_call_sum) * 100
+          ).toFixed(2);
+          not_permitted_to_call_sum += users[user].filter(
+            (x) => x.answer2 === "no"
+          ).length;
+          permitted_to_call_sum += users[user].filter(
+            (x) => x.answer2 === "yes"
+          ).length;
+          call_permission_sum_percentage = parseFloat(
+            (permitted_to_call_sum / connected_call_sum) * 100
+          ).toFixed(2);
+          bellow_18_sum += users[user].filter(
+            (x) => x.answer3 === "-18"
+          ).length;
+          non_smoker_sum += users[user].filter(
+            (x) => x.answer4 === "no"
+          ).length;
+          ba_did_not_pay_visit_sum += users[user].filter(
+            (x) => x.answer7 === "no"
+          ).length;
+          total_fake_call_sum =
+            bellow_18_sum + non_smoker_sum + ba_did_not_pay_visit_sum;
+          fake_call_sum_percentage = parseFloat(
+            (total_fake_call_sum / connected_call_sum) * 100
+          ).toFixed(2);
+          ba_did_visit_sum += users[user].filter(
+            (x) => x.answer7 === "yes"
+          ).length;
+          right_franchise_sum += users[user].filter(
+            (x) =>
+              x.answer5 === "real" ||
+              x.answer5 === "hollywood" ||
+              x.answer5 === "derby" ||
+              x.answer5 === "royals"
+          ).length;
+          stick_purchase_sum += users[user].filter(
+            (x) => x.answer8dot2 === "yes"
+          ).length;
+        }
+
+        result = result.map((r) => {
+          return {
+            ...r,
+            total_data_sum,
+            valid_data_sum,
+            valid_data_sum_percentage,
+            dublicate_data_sum,
+            dublicate_data_sum_percentage,
+            error_data_sum,
+            error_data_sum_percentage,
+            total_dial_call_sum,
+            connected_call_sum,
+            connected_call_percentage,
+            not_permitted_to_call_sum,
+            permitted_to_call_sum,
+            call_permission_sum_percentage,
+            bellow_18_sum,
+            non_smoker_sum,
+            ba_did_not_pay_visit_sum,
+            total_fake_call_sum,
+            fake_call_sum_percentage,
+            ba_did_visit_sum,
+            right_franchise_sum,
+            stick_purchase_sum,
+          };
+        });
+        console.log("Unique Users", result);
+        insertResult(result);
+      } catch (e) {
+        console.log(e.message);
+      }
+    }
+
+    async function insertResult(data) {
+      try {
+        await baWiseReportCollection.insertMany(
+          JSON.parse(JSON.stringify(data))
+        );
+        console.log("Inserted");
+        res.send(true);
+      } catch (e) {
+        // res.send("Error", e.message);
+        res.status(404).send("error");
+      }
+    }
+    analyzeData();
+  });
+  app.get("/territoryReport/:date", async (req, res) => {
+    const date = req.params.date;
+    console.log(date);
+    async function analyzeData() {
+      let result = [];
+      let total_data_sum = 0;
+      let valid_data_sum = 0;
+      let valid_data_sum_percentage = 0;
+      let dublicate_data_sum = 0;
+      let dublicate_data_sum_percentage = 0;
+      let error_data_sum = 0;
+      let error_data_sum_percentage = 0;
+      let total_dial_call_sum = 0;
+      let connected_call_sum = 0;
+      let connected_call_percentage = 0;
+      let not_permitted_to_call_sum = 0;
+      let permitted_to_call_sum = 0;
+      let call_permission_sum_percentage = 0;
+      let bellow_18_sum = 0;
+      let non_smoker_sum = 0;
+      let ba_did_not_pay_visit_sum = 0;
+      let total_fake_call_sum = 0;
+      let fake_call_sum_percentage = 0;
+      let ba_did_visit_sum = 0;
+      let right_franchise_sum = 0;
+      let stick_purchase_sum = 0;
+      try {
+        let data = await baWiseReportCollection
+          .find({ date: new Date(date).toISOString() })
+          .toArray();
+        let users = _.groupBy(JSON.parse(JSON.stringify(data)), function (d) {
+          return d.territory;
+        });
+        for (user in users) {
+          result.push({
+            userId: user,
+            date: new Date(users[user][0].date),
+            baName: users[user][0].baName,
+            region: users[user][0].region,
+            area: users[user][0].area,
+            territory: users[user][0].territory,
+            Sales_Point: users[user][0].Sales_Point,
+            agencyName: users[user][0].agencyName,
+            allocated_target: users[user]
+              .filter((x) => x.allocated_target)
+              .map((x) => Number(x.allocated_target))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_data_count: users[user]
+              .filter((x) => x.total_data_count)
+              .map((x) => Number(x.total_data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_valid_data: users[user]
+              .filter((x) => x.valid_Data_count)
+              .map((x) => Number(x.valid_Data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_valid_data_percentage:
+              (users[user]
+                .filter((x) => x.valid_Data_count)
+                .map((x) => Number(x.valid_Data_count))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_dublicate_data: users[user]
+              .filter((x) => x.dublicate_Data_count)
+              .map((x) => Number(x.dublicate_Data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_dublicate_data_percentage:
+              (users[user]
+                .filter((x) => x.dublicate_Data_count)
+                .map((x) => Number(x.dublicate_Data_count))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_error_data: users[user]
+              .filter((x) => x.error_Data_count)
+              .map((x) => Number(x.error_Data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_error_data_percentage:
+              (users[user]
+                .filter((x) => x.error_Data_count)
+                .map((x) => Number(x.error_Data_count))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_dial_call: users[user]
+              .filter((x) => x.total_dial_call)
+              .map((x) => Number(x.total_dial_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+
+            total_connected_call: users[user]
+              .filter((x) => x.total_connected_call)
+              .map((x) => Number(x.total_connected_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_connected_call_percentage:
+              (users[user]
+                .filter((x) => x.total_connected_call)
+                .map((x) => Number(x.total_connected_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_dial_call)
+                  .map((x) => Number(x.total_dial_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            not_permitted_to_call: users[user]
+              .filter((x) => x.not_permitted_to_call)
+              .map((x) => Number(x.not_permitted_to_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            permitted_to_call: users[user]
+              .filter((x) => x.permitted_to_call)
+              .map((x) => Number(x.permitted_to_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            call_permission_percentage:
+              (users[user]
+                .filter((x) => x.permitted_to_call)
+                .map((x) => Number(x.permitted_to_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_connected_call)
+                  .map((x) => Number(x.total_connected_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            bellow_18: users[user]
+              .filter((x) => x.bellow_18)
+              .map((x) => Number(x.bellow_18))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            non_smoker: users[user]
+              .filter((x) => x.non_smoker)
+              .map((x) => Number(x.non_smoker))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            ba_did_not_pay_visit: users[user]
+              .filter((x) => x.ba_did_not_pay_visit)
+              .map((x) => Number(x.ba_did_not_pay_visit))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_fake_call: users[user]
+              .filter((x) => x.total_fake_call)
+              .map((x) => Number(x.total_fake_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            fake_call_percentage:
+              (users[user]
+                .filter((x) => x.total_fake_call)
+                .map((x) => Number(x.total_fake_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_connected_call)
+                  .map((x) => Number(x.total_connected_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            ba_did_visit: users[user]
+              .filter((x) => x.ba_did_visit)
+              .map((x) => Number(x.ba_did_visit))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            right_franchise: users[user]
+              .filter((x) => x.right_franchise)
+              .map((x) => Number(x.right_franchise))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            stick_purchase: users[user]
+              .filter((x) => x.stick_purchase)
+              .map((x) => Number(x.stick_purchase))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+          });
+          total_data_sum += users[user]
+            .filter((x) => x.valid_Data_count)
+            .map((x) => Number(x.valid_Data_count))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          valid_data_sum += users[user]
+            .filter((x) => x.valid_Data_count)
+            .map((x) => Number(x.valid_Data_count))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          valid_data_sum_percentage = parseFloat(
+            (valid_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          dublicate_data_sum += users[user]
+            .filter((x) => x.dublicate_Data_count)
+            .map((x) => Number(x.dublicate_Data_count))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          dublicate_data_sum_percentage = parseFloat(
+            (dublicate_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          error_data_sum += users[user]
+            .filter((x) => x.error_Data_count)
+            .map((x) => Number(x.error_Data_count))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          error_data_sum_percentage = parseFloat(
+            (error_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          total_dial_call_sum += users[user]
+            .filter((x) => x.total_dial_call)
+            .map((x) => Number(x.total_dial_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          connected_call_sum += users[user]
+            .filter((x) => x.total_connected_call)
+            .map((x) => Number(x.total_connected_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          connected_call_percentage = parseFloat(
+            (connected_call_sum / total_dial_call_sum) * 100
+          ).toFixed(2);
+          not_permitted_to_call_sum += users[user]
+            .filter((x) => x.not_permitted_to_call)
+            .map((x) => Number(x.not_permitted_to_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          permitted_to_call_sum += users[user]
+            .filter((x) => x.permitted_to_call)
+            .map((x) => Number(x.permitted_to_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          call_permission_sum_percentage = parseFloat(
+            (permitted_to_call_sum / connected_call_sum) * 100
+          ).toFixed(2);
+          bellow_18_sum += users[user]
+            .filter((x) => x.bellow_18)
+            .map((x) => Number(x.bellow_18))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          non_smoker_sum += users[user]
+            .filter((x) => x.non_smoker)
+            .map((x) => Number(x.non_smoker))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          ba_did_not_pay_visit_sum += users[user]
+            .filter((x) => x.ba_did_not_pay_visit)
+            .map((x) => Number(x.ba_did_not_pay_visit))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          total_fake_call_sum =
+            bellow_18_sum + non_smoker_sum + ba_did_not_pay_visit_sum;
+          fake_call_sum_percentage = parseFloat(
+            (total_fake_call_sum / connected_call_sum) * 100
+          ).toFixed(2);
+          ba_did_visit_sum += users[user]
+            .filter((x) => x.ba_did_visit)
+            .map((x) => Number(x.ba_did_visit))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          right_franchise_sum += users[user]
+            .filter((x) => x.right_franchise)
+            .map((x) => Number(x.right_franchise))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          stick_purchase_sum += users[user]
+            .filter((x) => x.stick_purchase)
+            .map((x) => Number(x.stick_purchase))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+        }
+
+        result = result.map((r) => {
+          return {
+            ...r,
+            total_data_sum,
+            valid_data_sum,
+            valid_data_sum_percentage,
+            dublicate_data_sum,
+            dublicate_data_sum_percentage,
+            error_data_sum,
+            error_data_sum_percentage,
+            total_dial_call_sum,
+            connected_call_sum,
+            connected_call_percentage,
+            not_permitted_to_call_sum,
+            permitted_to_call_sum,
+            call_permission_sum_percentage,
+            bellow_18_sum,
+            non_smoker_sum,
+            ba_did_not_pay_visit_sum,
+            total_fake_call_sum,
+            fake_call_sum_percentage,
+            ba_did_visit_sum,
+            right_franchise_sum,
+            stick_purchase_sum,
+          };
+        });
+        console.log("Unique Users", result);
+        insertResult(result);
+      } catch (e) {
+        console.log(e.message);
+      }
+    }
+
+    async function insertResult(data) {
+      try {
+        await territoryWiseReportCollection.insertMany(
+          JSON.parse(JSON.stringify(data))
+        );
+        console.log("Inserted");
+        res.send(true);
+      } catch (e) {
+        // res.send("Error", e.message);
+        res.status(404).send("error");
+      }
+    }
+    analyzeData();
+  });
+  app.get("/areaReport/:date", async (req, res) => {
+    const date = req.params.date;
+    console.log(date);
+    async function analyzeData() {
+      let result = [];
+      let total_allocated_sum = 0;
+      let total_data_sum = 0;
+      let valid_data_sum = 0;
+      let valid_data_sum_percentage = 0;
+      let dublicate_data_sum = 0;
+      let dublicate_data_sum_percentage = 0;
+      let error_data_sum = 0;
+      let error_data_sum_percentage = 0;
+      let total_dial_call_sum = 0;
+      let connected_call_sum = 0;
+      let connected_call_percentage = 0;
+      let not_permitted_to_call_sum = 0;
+      let permitted_to_call_sum = 0;
+      let call_permission_sum_percentage = 0;
+      let bellow_18_sum = 0;
+      let non_smoker_sum = 0;
+      let ba_did_not_pay_visit_sum = 0;
+      let total_fake_call_sum = 0;
+      let fake_call_sum_percentage = 0;
+      let ba_did_visit_sum = 0;
+      let right_franchise_sum = 0;
+      let stick_purchase_sum = 0;
+      try {
+        let data = await territoryWiseReportCollection
+          .find({ date: new Date(date).toISOString() })
+          .toArray();
+        let users = _.groupBy(JSON.parse(JSON.stringify(data)), function (d) {
+          return d.area;
+        });
+        for (user in users) {
+          result.push({
+            userId: user,
+            date: new Date(users[user][0].date),
+            baName: users[user][0].baName,
+            region: users[user][0].region,
+            area: users[user][0].area,
+            territory: users[user][0].territory,
+            Sales_Point: users[user][0].Sales_Point,
+            agencyName: users[user][0].agencyName,
+            allocated_target: users[user]
+              .filter((x) => x.allocated_target)
+              .map((x) => Number(x.allocated_target))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_data_count: users[user]
+              .filter((x) => x.total_data_count)
+              .map((x) => Number(x.total_data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_valid_data: users[user]
+              .filter((x) => x.total_valid_data)
+              .map((x) => Number(x.total_valid_data))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_valid_data_percentage:
+              (users[user]
+                .filter((x) => x.total_valid_data)
+                .map((x) => Number(x.total_valid_data))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_dublicate_data: users[user]
+              .filter((x) => x.total_dublicate_data)
+              .map((x) => Number(x.total_dublicate_data))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_dublicate_data_percentage:
+              (users[user]
+                .filter((x) => x.total_dublicate_data)
+                .map((x) => Number(x.total_dublicate_data))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_error_data: users[user]
+              .filter((x) => x.total_error_data)
+              .map((x) => Number(x.total_error_data))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_error_data_percentage:
+              (users[user]
+                .filter((x) => x.total_error_data)
+                .map((x) => Number(x.total_error_data))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_dial_call: users[user]
+              .filter((x) => x.total_dial_call)
+              .map((x) => Number(x.total_dial_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+
+            total_connected_call: users[user]
+              .filter((x) => x.total_connected_call)
+              .map((x) => Number(x.total_connected_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_connected_call_percentage:
+              (users[user]
+                .filter((x) => x.total_connected_call)
+                .map((x) => Number(x.total_connected_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_dial_call)
+                  .map((x) => Number(x.total_dial_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            not_permitted_to_call: users[user]
+              .filter((x) => x.not_permitted_to_call)
+              .map((x) => Number(x.not_permitted_to_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            permitted_to_call: users[user]
+              .filter((x) => x.permitted_to_call)
+              .map((x) => Number(x.permitted_to_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            call_permission_percentage:
+              (users[user]
+                .filter((x) => x.permitted_to_call)
+                .map((x) => Number(x.permitted_to_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_connected_call)
+                  .map((x) => Number(x.total_connected_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            bellow_18: users[user]
+              .filter((x) => x.bellow_18)
+              .map((x) => Number(x.bellow_18))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            non_smoker: users[user]
+              .filter((x) => x.non_smoker)
+              .map((x) => Number(x.non_smoker))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            ba_did_not_pay_visit: users[user]
+              .filter((x) => x.ba_did_not_pay_visit)
+              .map((x) => Number(x.ba_did_not_pay_visit))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_fake_call: users[user]
+              .filter((x) => x.total_fake_call)
+              .map((x) => Number(x.total_fake_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            fake_call_percentage:
+              (users[user]
+                .filter((x) => x.total_fake_call)
+                .map((x) => Number(x.total_fake_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_connected_call)
+                  .map((x) => Number(x.total_connected_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            ba_did_visit: users[user]
+              .filter((x) => x.ba_did_visit)
+              .map((x) => Number(x.ba_did_visit))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            right_franchise: users[user]
+              .filter((x) => x.right_franchise)
+              .map((x) => Number(x.right_franchise))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            stick_purchase: users[user]
+              .filter((x) => x.stick_purchase)
+              .map((x) => Number(x.stick_purchase))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+          });
+          total_allocated_sum += users[user]
+            .filter((x) => x.allocated_target)
+            .map((x) => Number(x.allocated_target))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          total_data_sum += users[user]
+            .filter((x) => x.total_data_count)
+            .map((x) => Number(x.total_data_count))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          valid_data_sum += users[user]
+            .filter((x) => x.total_valid_data)
+            .map((x) => Number(x.total_valid_data))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          valid_data_sum_percentage = parseFloat(
+            (valid_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          dublicate_data_sum += users[user]
+            .filter((x) => x.total_dublicate_data)
+            .map((x) => Number(x.total_dublicate_data))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          dublicate_data_sum_percentage = parseFloat(
+            (dublicate_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          error_data_sum += users[user]
+            .filter((x) => x.total_error_data)
+            .map((x) => Number(x.total_error_data))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          error_data_sum_percentage = parseFloat(
+            (error_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          total_dial_call_sum += users[user]
+            .filter((x) => x.total_dial_call)
+            .map((x) => Number(x.total_dial_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          connected_call_sum += users[user]
+            .filter((x) => x.total_connected_call)
+            .map((x) => Number(x.total_connected_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          connected_call_percentage = parseFloat(
+            (connected_call_sum / total_dial_call_sum) * 100
+          ).toFixed(2);
+          not_permitted_to_call_sum += users[user]
+            .filter((x) => x.not_permitted_to_call)
+            .map((x) => Number(x.not_permitted_to_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          permitted_to_call_sum += users[user]
+            .filter((x) => x.permitted_to_call)
+            .map((x) => Number(x.permitted_to_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          call_permission_sum_percentage = parseFloat(
+            (permitted_to_call_sum / connected_call_sum) * 100
+          ).toFixed(2);
+          bellow_18_sum += users[user]
+            .filter((x) => x.bellow_18)
+            .map((x) => Number(x.bellow_18))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          non_smoker_sum += users[user]
+            .filter((x) => x.non_smoker)
+            .map((x) => Number(x.non_smoker))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          ba_did_not_pay_visit_sum += users[user]
+            .filter((x) => x.ba_did_not_pay_visit)
+            .map((x) => Number(x.ba_did_not_pay_visit))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          total_fake_call_sum =
+            bellow_18_sum + non_smoker_sum + ba_did_not_pay_visit_sum;
+          fake_call_sum_percentage = parseFloat(
+            (total_fake_call_sum / connected_call_sum) * 100
+          ).toFixed(2);
+          ba_did_visit_sum += users[user]
+            .filter((x) => x.ba_did_visit)
+            .map((x) => Number(x.ba_did_visit))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          right_franchise_sum += users[user]
+            .filter((x) => x.right_franchise)
+            .map((x) => Number(x.right_franchise))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          stick_purchase_sum += users[user]
+            .filter((x) => x.stick_purchase)
+            .map((x) => Number(x.stick_purchase))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+        }
+
+        result = result.map((r) => {
+          return {
+            ...r,
+            total_allocated_sum,
+            total_data_sum,
+            valid_data_sum,
+            valid_data_sum_percentage,
+            dublicate_data_sum,
+            dublicate_data_sum_percentage,
+            error_data_sum,
+            error_data_sum_percentage,
+            total_dial_call_sum,
+            connected_call_sum,
+            connected_call_percentage,
+            not_permitted_to_call_sum,
+            permitted_to_call_sum,
+            call_permission_sum_percentage,
+            bellow_18_sum,
+            non_smoker_sum,
+            ba_did_not_pay_visit_sum,
+            total_fake_call_sum,
+            fake_call_sum_percentage,
+            ba_did_visit_sum,
+            right_franchise_sum,
+            stick_purchase_sum,
+          };
+        });
+        console.log("Unique Users", result);
+        insertResult(result);
+      } catch (e) {
+        console.log(e.message);
+      }
+    }
+
+    async function insertResult(data) {
+      try {
+        await areaWiseReportCollection.insertMany(
+          JSON.parse(JSON.stringify(data))
+        );
+        console.log("Inserted");
+        res.send(true);
+      } catch (e) {
+        // res.send("Error", e.message);
+        res.status(404).send("error");
+      }
+    }
+    analyzeData();
+  });
+  app.get("/regionReport/:date", async (req, res) => {
+    const date = req.params.date;
+    console.log(date);
+    async function analyzeData() {
+      let result = [];
+      let total_allocated_sum = 0;
+      let total_data_sum = 0;
+      let valid_data_sum = 0;
+      let valid_data_sum_percentage = 0;
+      let dublicate_data_sum = 0;
+      let dublicate_data_sum_percentage = 0;
+      let error_data_sum = 0;
+      let error_data_sum_percentage = 0;
+      let total_dial_call_sum = 0;
+      let connected_call_sum = 0;
+      let connected_call_percentage = 0;
+      let not_permitted_to_call_sum = 0;
+      let permitted_to_call_sum = 0;
+      let call_permission_sum_percentage = 0;
+      let bellow_18_sum = 0;
+      let non_smoker_sum = 0;
+      let ba_did_not_pay_visit_sum = 0;
+      let total_fake_call_sum = 0;
+      let fake_call_sum_percentage = 0;
+      let ba_did_visit_sum = 0;
+      let right_franchise_sum = 0;
+      let stick_purchase_sum = 0;
+      try {
+        let data = await areaWiseReportCollection
+          .find({ date: new Date(date).toISOString() })
+          .toArray();
+        let users = _.groupBy(JSON.parse(JSON.stringify(data)), function (d) {
+          return d.region;
+        });
+        for (user in users) {
+          result.push({
+            userId: user,
+            date: new Date(users[user][0].date),
+            baName: users[user][0].baName,
+            region: users[user][0].region,
+            area: users[user][0].area,
+            territory: users[user][0].territory,
+            Sales_Point: users[user][0].Sales_Point,
+            agencyName: users[user][0].agencyName,
+            allocated_target: users[user]
+              .filter((x) => x.allocated_target)
+              .map((x) => Number(x.allocated_target))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_data_count: users[user]
+              .filter((x) => x.total_data_count)
+              .map((x) => Number(x.total_data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_valid_data: users[user]
+              .filter((x) => x.total_valid_data)
+              .map((x) => Number(x.total_valid_data))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_valid_data_percentage:
+              (users[user]
+                .filter((x) => x.total_valid_data)
+                .map((x) => Number(x.total_valid_data))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_dublicate_data: users[user]
+              .filter((x) => x.total_dublicate_data)
+              .map((x) => Number(x.total_dublicate_data))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_dublicate_data_percentage:
+              (users[user]
+                .filter((x) => x.total_dublicate_data)
+                .map((x) => Number(x.total_dublicate_data))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_error_data: users[user]
+              .filter((x) => x.total_error_data)
+              .map((x) => Number(x.total_error_data))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_error_data_percentage:
+              (users[user]
+                .filter((x) => x.total_error_data)
+                .map((x) => Number(x.total_error_data))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_data_count)
+                  .map((x) => Number(x.total_data_count))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            total_dial_call: users[user]
+              .filter((x) => x.total_dial_call)
+              .map((x) => Number(x.total_dial_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+
+            total_connected_call: users[user]
+              .filter((x) => x.total_connected_call)
+              .map((x) => Number(x.total_connected_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_connected_call_percentage:
+              (users[user]
+                .filter((x) => x.total_connected_call)
+                .map((x) => Number(x.total_connected_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_dial_call)
+                  .map((x) => Number(x.total_dial_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            not_permitted_to_call: users[user]
+              .filter((x) => x.not_permitted_to_call)
+              .map((x) => Number(x.not_permitted_to_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            permitted_to_call: users[user]
+              .filter((x) => x.permitted_to_call)
+              .map((x) => Number(x.permitted_to_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            call_permission_percentage:
+              (users[user]
+                .filter((x) => x.permitted_to_call)
+                .map((x) => Number(x.permitted_to_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_connected_call)
+                  .map((x) => Number(x.total_connected_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            bellow_18: users[user]
+              .filter((x) => x.bellow_18)
+              .map((x) => Number(x.bellow_18))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            non_smoker: users[user]
+              .filter((x) => x.non_smoker)
+              .map((x) => Number(x.non_smoker))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            ba_did_not_pay_visit: users[user]
+              .filter((x) => x.ba_did_not_pay_visit)
+              .map((x) => Number(x.ba_did_not_pay_visit))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            total_fake_call: users[user]
+              .filter((x) => x.total_fake_call)
+              .map((x) => Number(x.total_fake_call))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            fake_call_percentage:
+              (users[user]
+                .filter((x) => x.total_fake_call)
+                .map((x) => Number(x.total_fake_call))
+                .reduce((sum, cv) => (sum += Number(cv)), 0) /
+                users[user]
+                  .filter((x) => x.total_connected_call)
+                  .map((x) => Number(x.total_connected_call))
+                  .reduce((sum, cv) => (sum += Number(cv)), 0)) *
+              100,
+            ba_did_visit: users[user]
+              .filter((x) => x.ba_did_visit)
+              .map((x) => Number(x.ba_did_visit))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            right_franchise: users[user]
+              .filter((x) => x.right_franchise)
+              .map((x) => Number(x.right_franchise))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+            stick_purchase: users[user]
+              .filter((x) => x.stick_purchase)
+              .map((x) => Number(x.stick_purchase))
+              .reduce((sum, cv) => (sum += Number(cv)), 0),
+          });
+          total_allocated_sum += users[user]
+            .filter((x) => x.allocated_target)
+            .map((x) => Number(x.allocated_target))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          total_data_sum += users[user]
+            .filter((x) => x.total_data_count)
+            .map((x) => Number(x.total_data_count))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          valid_data_sum += users[user]
+            .filter((x) => x.total_valid_data)
+            .map((x) => Number(x.total_valid_data))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          valid_data_sum_percentage = parseFloat(
+            (valid_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          dublicate_data_sum += users[user]
+            .filter((x) => x.total_dublicate_data)
+            .map((x) => Number(x.total_dublicate_data))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          dublicate_data_sum_percentage = parseFloat(
+            (dublicate_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          error_data_sum += users[user]
+            .filter((x) => x.total_error_data)
+            .map((x) => Number(x.total_error_data))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          error_data_sum_percentage = parseFloat(
+            (error_data_sum / total_data_sum) * 100
+          ).toFixed(2);
+          total_dial_call_sum += users[user]
+            .filter((x) => x.total_dial_call)
+            .map((x) => Number(x.total_dial_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          connected_call_sum += users[user]
+            .filter((x) => x.total_connected_call)
+            .map((x) => Number(x.total_connected_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          connected_call_percentage = parseFloat(
+            (connected_call_sum / total_dial_call_sum) * 100
+          ).toFixed(2);
+          not_permitted_to_call_sum += users[user]
+            .filter((x) => x.not_permitted_to_call)
+            .map((x) => Number(x.not_permitted_to_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          permitted_to_call_sum += users[user]
+            .filter((x) => x.permitted_to_call)
+            .map((x) => Number(x.permitted_to_call))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          call_permission_sum_percentage = parseFloat(
+            (permitted_to_call_sum / connected_call_sum) * 100
+          ).toFixed(2);
+          bellow_18_sum += users[user]
+            .filter((x) => x.bellow_18)
+            .map((x) => Number(x.bellow_18))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          non_smoker_sum += users[user]
+            .filter((x) => x.non_smoker)
+            .map((x) => Number(x.non_smoker))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          ba_did_not_pay_visit_sum += users[user]
+            .filter((x) => x.ba_did_not_pay_visit)
+            .map((x) => Number(x.ba_did_not_pay_visit))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          total_fake_call_sum =
+            bellow_18_sum + non_smoker_sum + ba_did_not_pay_visit_sum;
+          fake_call_sum_percentage = parseFloat(
+            (total_fake_call_sum / connected_call_sum) * 100
+          ).toFixed(2);
+          ba_did_visit_sum += users[user]
+            .filter((x) => x.ba_did_visit)
+            .map((x) => Number(x.ba_did_visit))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          right_franchise_sum += users[user]
+            .filter((x) => x.right_franchise)
+            .map((x) => Number(x.right_franchise))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+          stick_purchase_sum += users[user]
+            .filter((x) => x.stick_purchase)
+            .map((x) => Number(x.stick_purchase))
+            .reduce((sum, cv) => (sum += Number(cv)), 0);
+        }
+
+        result = result.map((r) => {
+          return {
+            ...r,
+            total_allocated_sum,
+            total_data_sum,
+            valid_data_sum,
+            valid_data_sum_percentage,
+            dublicate_data_sum,
+            dublicate_data_sum_percentage,
+            error_data_sum,
+            error_data_sum_percentage,
+            total_dial_call_sum,
+            connected_call_sum,
+            connected_call_percentage,
+            not_permitted_to_call_sum,
+            permitted_to_call_sum,
+            call_permission_sum_percentage,
+            bellow_18_sum,
+            non_smoker_sum,
+            ba_did_not_pay_visit_sum,
+            total_fake_call_sum,
+            fake_call_sum_percentage,
+            ba_did_visit_sum,
+            right_franchise_sum,
+            stick_purchase_sum,
+          };
+        });
+        console.log("Unique Users", result);
+        insertResult(result);
+      } catch (e) {
+        console.log(e.message);
+      }
+    }
+
+    async function insertResult(data) {
+      try {
+        await regionWiseReportCollection.insertMany(
+          JSON.parse(JSON.stringify(data))
+        );
+        console.log("Inserted");
+        res.send(true);
+      } catch (e) {
+        // res.send("Error", e.message);
+        res.status(404).send("error");
+      }
+    }
+    analyzeData();
   });
   // app.get("*", (req, res) => {
   //   res.sendFile(
