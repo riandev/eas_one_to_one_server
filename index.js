@@ -1592,11 +1592,11 @@ client.connect((err) => {
     }
     analyzeData();
   });
-  // app.get("*", (req, res) => {
-  //   res.sendFile(
-  //     path.join(__dirname, "../eas_one_to_one_client/build", "index.html")
-  //   );
-  // });
+  app.get("*", (req, res) => {
+    res.sendFile(
+      path.join(__dirname, "../eas_one_to_one_client/build", "index.html")
+    );
+  });
 });
 
 app.get("/", (req, res) => {
