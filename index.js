@@ -341,7 +341,7 @@ client.connect((err) => {
       .aggregate([
         {
           $match: {
-            $and: [{ Data_Status: "Valid_Data" }, { data_date: regenDate }],
+            $and: [{ Data_Status: "Valid_Data" }, { data_date: regenDate },{for_d:null}],
           },
         },
       ])
