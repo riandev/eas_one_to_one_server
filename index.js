@@ -355,16 +355,17 @@ client.connect((err) => {
         );
         for (user in users) {
           output.push({
-            userId: user,
-            consumers: users[user],
+            // userId: user,
+            // consumers: users[user],
             // countByUser: users[user].length,
-            callDone: users[user].filter(
-              (x) => x.answer10 === "yes" || x.answer10 === "no"
-            ).length,
+            // callDone: users[user].filter(
+            //   (x) => x.answer10 === "yes" || x.answer10 === "no"
+            // ).length,
             new_stick_sales: users[user]
               .filter(
                 (x) =>
                   x.sales_status === "1_stick_trial" &&
+                  x.for_d === null &&
                   (x.answer10 === null || x.answer10 === undefined)
               )
               .slice(
@@ -390,6 +391,7 @@ client.connect((err) => {
             new_packet_sales: users[user]
               .filter(
                 (x) =>
+                  x.for_d === null &&
                   (x.sales_status === "Lighter_VAO" ||
                     x.sales_status === "Plastic_sachet") &&
                   (x.answer10 === null || x.answer10 === undefined)
