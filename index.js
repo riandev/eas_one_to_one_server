@@ -341,7 +341,7 @@ client.connect((err) => {
       .aggregate([
         {
           $match: {
-            $and: [{for_d:null},{ Data_Status: "Valid_Data" }, { data_date: regenDate }],
+            $and: [{ Data_Status: "Valid_Data" }, { data_date: regenDate }],
           },
         },
       ])
@@ -356,15 +356,15 @@ client.connect((err) => {
         for (user in users) {
           output.push({
             // userId: user,
-            // consumers: users[user],
+            consumers: users[user],
             // countByUser: users[user].length,
-            // callDone: users[user].filter(
-            //   (x) => x.answer1 === "yes" || x.answer1 === "no"
-            // ).length,
+            callDone: users[user].filter(
+              (x) => x.answer10 === "yes" || x.answer10 === "no"
+            ).length,
             new_stick_sales: users[user]
               .filter(
                 (x) =>
-                  x.sales_status === "1_stick_trial"
+                  x.sales_status === "1_stick_trial" && x.for_d===null
               )
               .slice(
                 0,
@@ -385,8 +385,8 @@ client.connect((err) => {
             new_packet_sales: users[user]
               .filter(
                 (x) =>
-                  x.sales_status === "Lighter_VAO" ||
-                    x.sales_status === "Plastic_sachet"
+                  (x.sales_status === "Lighter_VAO" ||
+                    x.sales_status === "Plastic_sachet")&&x.for_d===null
               )
               .slice(
                 0,
@@ -488,6 +488,15 @@ client.connect((err) => {
             Sales_Point: users[user][0].Sales_Point,
             agencyName: users[user][0].agencyName,
             allocated_target: users[user][0].allocated_target,
+                        total_data_count:
+              users[user].filter((x) => x.Data_Status === "Valid_Data").length +
+              users[user].filter((x) => x.Data_Status === "Duplicate_Data")
+                .length +
+              users[user].filter((x) => x.Data_Status === "Error_Data").length,
+              total_data_achived_percentage:(((users[user].filter((x) => x.Data_Status === "Valid_Data").length +
+              users[user].filter((x) => x.Data_Status === "Duplicate_Data")
+                .length +
+              users[user].filter((x) => x.Data_Status === "Error_Data").length)/users[user][0].allocated_target)*100),
             valid_Data_count: users[user].filter(
               (x) => x.Data_Status === "Valid_Data"
             ).length,
@@ -497,11 +506,6 @@ client.connect((err) => {
             error_Data_count: users[user].filter(
               (x) => x.Data_Status === "Error_Data"
             ).length,
-            total_data_count:
-              users[user].filter((x) => x.Data_Status === "Valid_Data").length +
-              users[user].filter((x) => x.Data_Status === "Duplicate_Data")
-                .length +
-              users[user].filter((x) => x.Data_Status === "Error_Data").length,
             valid_data_percentage:
               (users[user].filter((x) => x.Data_Status === "Valid_Data")
                 .length /
@@ -747,6 +751,13 @@ client.connect((err) => {
               .filter((x) => x.total_data_count)
               .map((x) => Number(x.total_data_count))
               .reduce((sum, cv) => (sum += Number(cv)), 0),
+              total_data_achived_percentage:((users[user]
+              .filter((x) => x.total_data_count)
+              .map((x) => Number(x.total_data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0)/users[user]
+              .filter((x) => x.allocated_target)
+              .map((x) => Number(x.allocated_target))
+              .reduce((sum, cv) => (sum += Number(cv)), 0))*100),
             total_valid_data: users[user]
               .filter((x) => x.valid_Data_count)
               .map((x) => Number(x.valid_Data_count))
@@ -1042,6 +1053,13 @@ client.connect((err) => {
               .filter((x) => x.total_data_count)
               .map((x) => Number(x.total_data_count))
               .reduce((sum, cv) => (sum += Number(cv)), 0),
+              total_data_achived_percentage:(users[user]
+              .filter((x) => x.total_data_count)
+              .map((x) => Number(x.total_data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0)/users[user]
+              .filter((x) => x.allocated_target)
+              .map((x) => Number(x.allocated_target))
+              .reduce((sum, cv) => (sum += Number(cv)), 0)*100),
             total_valid_data: users[user]
               .filter((x) => x.total_valid_data)
               .map((x) => Number(x.total_valid_data))
@@ -1342,6 +1360,13 @@ client.connect((err) => {
               .filter((x) => x.total_data_count)
               .map((x) => Number(x.total_data_count))
               .reduce((sum, cv) => (sum += Number(cv)), 0),
+              total_data_achived_percentage:(users[user]
+              .filter((x) => x.total_data_count)
+              .map((x) => Number(x.total_data_count))
+              .reduce((sum, cv) => (sum += Number(cv)), 0)/users[user]
+              .filter((x) => x.allocated_target)
+              .map((x) => Number(x.allocated_target))
+              .reduce((sum, cv) => (sum += Number(cv)), 0)*100),
             total_valid_data: users[user]
               .filter((x) => x.total_valid_data)
               .map((x) => Number(x.total_valid_data))
