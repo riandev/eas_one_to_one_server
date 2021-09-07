@@ -341,7 +341,7 @@ client.connect((err) => {
       .aggregate([
         {
           $match: {
-            $and: [{ Data_Status: "Valid_Data" }, { data_date: regenDate },{for_d:null}],
+            $and: [{ for_d: null },{ Data_Status: "Valid_Data" }, { data_date: regenDate }],
           },
         },
       ])
@@ -364,14 +364,13 @@ client.connect((err) => {
             new_stick_sales: users[user]
               .filter(
                 (x) =>
-                  x.sales_status === "1_stick_trial" &&
-                  (x.answer7dot1 === null || x.answer7dot1 === undefined)
+                  x.sales_status === "1_stick_trial"
               )
               .slice(
                 0,
-                users[user].filter((x) => x.answer7dot1 === "yes").length < 5
+                users[user].filter((x) => x.answer10 === "yes"||x.answer10 === "no").length < 5
                   ? 5 -
-                      users[user].filter((x) => x.answer7dot1 === "yes").length
+                      users[user].filter((x) => x.answer10 === "yes"||x.answer10 === "no").length
                   : 0
               )
               .map((d) => {
@@ -386,13 +385,12 @@ client.connect((err) => {
             new_packet_sales: users[user]
               .filter(
                 (x) =>
-                  (x.sales_status === "Lighter_VAO" ||
-                    x.sales_status === "Plastic_sachet") &&
-                  (x.answer7dot1 === null || x.answer7dot1 === undefined)
+                  x.sales_status === "Lighter_VAO" ||
+                    x.sales_status === "Plastic_sachet"
               )
               .slice(
                 0,
-                users[user].filter((x) => x.answer7dot1 === "yes").length < 1
+                users[user].filter((x) => x.answer10 === "yes"||x.answer10 === "no").length < 1
                   ? 1
                   : 0
               )
