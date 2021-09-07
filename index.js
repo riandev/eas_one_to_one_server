@@ -187,7 +187,6 @@ client.connect((err) => {
   });
   app.post("/reportsData", (req, res) => {
     const detailsReports = req.body;
-    console.log(detailsReports);
     detailsReportCollection.insertMany(detailsReports).then((result) => {
       res.send(result.insertedCount > 0);
     });
@@ -1633,11 +1632,46 @@ client.connect((err) => {
         console.log("Inserted");
         res.send(true);
       } catch (e) {
-        // res.send("Error", e.message);
         res.status(404).send("error");
       }
     }
     analyzeData();
+  });
+  app.get("/getBRReport/:date", (req, res) => {
+    const date = req.params.date;
+    console.log(date);
+    baWiseReportCollection
+      .find({ date: new Date(date).toISOString() })
+      .toArray((err, results) => {
+        res.send(results);
+      });
+  });
+  app.get("/getTerritoryReport/:date", (req, res) => {
+    const date = req.params.date;
+    console.log(date);
+    territoryWiseReportCollection
+      .find({ date: new Date(date).toISOString() })
+      .toArray((err, results) => {
+        res.send(results);
+      });
+  });
+  app.get("/getAreaReport/:date", (req, res) => {
+    const date = req.params.date;
+    console.log(date);
+    areaWiseReportCollection
+      .find({ date: new Date(date).toISOString() })
+      .toArray((err, results) => {
+        res.send(results);
+      });
+  });
+  app.get("/getRegionReport/:date", (req, res) => {
+    const date = req.params.date;
+    console.log(date);
+    regionWiseReportCollection
+      .find({ date: new Date(date).toISOString() })
+      .toArray((err, results) => {
+        res.send(results);
+      });
   });
   app.get("*", (req, res) => {
     res.sendFile(
