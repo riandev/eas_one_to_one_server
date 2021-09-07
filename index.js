@@ -356,11 +356,11 @@ client.connect((err) => {
         for (user in users) {
           output.push({
             // userId: user,
-            consumers: users[user],
+            // consumers: users[user],
             // countByUser: users[user].length,
-            callDone: users[user].filter(
-              (x) => x.answer10 === "yes" || x.answer10 === "no"
-            ).length,
+            // callDone: users[user].filter(
+            //   (x) => x.answer10 === "yes" || x.answer10 === "no"
+            // ).length,
             new_stick_sales: users[user]
               .filter(
                 (x) =>
